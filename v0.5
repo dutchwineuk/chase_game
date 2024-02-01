@@ -17,7 +17,7 @@ green = (51, 255, 153)
 
 # ball-cfg
 ball_radius = 15
-ball_color = (0, 0, 0)
+ball_colour = (0, 0, 0)
 ball_pos = [width // 2, height // 2]
 ball_speed = 7
 ball_velocity = pygame.math.Vector2(1, 0)
@@ -54,7 +54,7 @@ while True:
                 ball_pos = [width // 2, height // 2]
                 for block in blocks:
                     block["pos"] = (random.randint(50, width - 100), random.randint(50, height - 100))
-                    block["color"] = black
+                    block["colour"] = black
                 paused = False
             else:
                 paused = True
@@ -100,16 +100,16 @@ while True:
                     pygame.Rect(block["pos"][0], block["pos"][1], block["width"], block["height"])):
                 # colour-ALERT for cursor and block collision
                 for block in blocks:
-                    block["color"] = green
-                ball_color = green
+                    block["colour"] = green
+                ball_colour = green
                 paused = True  # colour-GAMEOVER
                 break  # Exit the loop once a collision is detected
 
         # no-COLL colour-revert
         else:
             for block in blocks:
-                block["color"] = black
-            ball_color = (0, 255, 255)
+                block["colour"] = black
+            ball_colour = (0, 255, 255)
 
         #COLL-CHK-Bound
         if (
@@ -120,16 +120,16 @@ while True:
         ):
             # colour-ALERT for cursor and boundary collision
             for block in blocks:
-                block["color"] = green
-            ball_color = green
+                block["colour"] = green
+            ball_colour = green
             paused = True
 
         # COLL-CHK-Cursor
         if cursor_collision.colliderect(
                 pygame.Rect(ball_pos[0] - ball_radius, ball_pos[1] - ball_radius, 2 * ball_radius, 2 * ball_radius)):
             for block in blocks:
-                block["color"] = green
-            ball_color = green
+                block["colour"] = green
+            ball_colour = green
             paused = True
 
         # ball-in-bounds
@@ -147,9 +147,9 @@ while True:
     pygame.draw.rect(screen, (0, 0, 0), (width - wall_thickness, 0, wall_thickness, height))  # Right wall
     # blocks
     for block in blocks:
-        pygame.draw.rect(screen, block["color"], (block["pos"][0], block["pos"][1], block["width"], block["height"]))
+        pygame.draw.rect(screen, block["colour"], (block["pos"][0], block["pos"][1], block["width"], block["height"]))
     # ball
-    pygame.draw.circle(screen, ball_color, (int(ball_pos[0]), int(ball_pos[1])), ball_radius)
+    pygame.draw.circle(screen, ball_colour, (int(ball_pos[0]), int(ball_pos[1])), ball_radius)
 
     # GAMEOVER-cfg
     if paused:
