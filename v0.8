@@ -1,0 +1,281 @@
+import pygame
+import pygame.math
+import sys
+import random
+import time
+
+pygame.init()
+
+width, height = 1200, 800
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption("G  O  L  D  R  U  S  H")
+
+BG = (96,96,96)
+white = (0,0,0)
+black = (255,255,255)
+alert = (223, 74, 0)
+GOLD = (204, 204, 0)
+GOLD_DUST = (117, 107, 45)
+
+# CFGs
+# chaser
+ball_radius = 12
+ball_colour = (223, 74, 0)
+ball_pos = [width // 2, height // 2]
+ball_speed = 2
+ball_velocity = pygame.math.Vector2(1, 0)
+ball_colours = [(0, 255, 255), (255, 0, 255), (255, 255, 0)]
+
+# bounds
+floor_height = 50
+ceiling_height = 50
+wall_thickness = 20
+
+# blocks
+def generate_blocks():
+    return [
+        {"pos": (random.randint(50, width - 100), random.randint(50, height - 100)),
+         "width": random.choice([50, 60, 80]),
+         "height": random.choice([50, 60, 80]),
+         "colour": black} for _ in range(20)
+    ]
+
+blocks = generate_blocks()
+
+# gold-block
+gold_size = 70
+def reset_gold_block():
+    return {"pos": (random.randint(50, width - 100), random.randint(50, height - 100)),
+            "width": gold_size, "height": gold_size, "colour": GOLD}
+
+gold_block = reset_gold_block()
+
+score = 0
+loop = 0
+time_in_contact = 0
+gold_rand = random.random()
+
+
+# TESTING
+TEST = 1
+# ball_speed = 1
+
+
+paused = False
+
+# LOOP
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if paused:
+                # RESET GAME
+                loop = 0
+                ball_speed = 2
+                gold_size = 70
+                ball_pos = [width // 2, height // 2]
+                blocks = generate_blocks()
+                gold_block = reset_gold_block()
+
+                score = 0
+                paused = False
+            else:
+                paused = True
+
+    # GAME
+    if not paused:
+        game_over_bg_colour = BG
+
+        gold_rand = random.random()
+        time = 0.5 + (gold_rand*2)
+        contact_threshold = time
+        countdown_timer = contact_threshold
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        cursor_collision = pygame.Rect(mouse_x - 1, mouse_y - 1, 2, 2)
+
+        # chase
+        target_pos = pygame.math.Vector2(mouse_x, mouse_y)
+        ball_velocity = target_pos - pygame.math.Vector2(ball_pos)
+        ball_velocity.scale_to_length(ball_speed)
+        ball_pos[0] += ball_velocity.x
+        ball_pos[1] += ball_velocity.y
+
+        # chaser bounce
+        if ball_pos[0] - (ball_radius + 10) < wall_thickness or ball_pos[0] + (
+                ball_radius + 10) > width - wall_thickness:
+            ball_velocity.x *= -1
+        if ball_pos[1] - (ball_radius + 10) < ceiling_height or ball_pos[1] + (
+                ball_radius + 10) > height - floor_height:
+            ball_velocity.y *= -1
+
+        # nugg/diff
+        if loop >= 10:
+            ball_speed = 3
+            gold_size = 65
+        if loop >= 19:
+            ball_speed = 4
+            gold_size = 60
+        if loop >= 29:
+            ball_speed = 5
+            gold_size = 50
+        if loop >= 39:
+            ball_speed = 6
+            gold_size = 40
+        if loop >= 49:
+            ball_speed = 7
+            gold_size = 30
+        if loop >= 59:
+            ball_speed = 8
+            gold_size = 20
+        if loop >= 69:
+            ball_speed = 9
+            gold_size = 10
+        if loop >= 79:
+            ball_speed = 10
+            gold_size = 6
+        if loop >= 89:
+            ball_speed = 11
+            gold_size = 3
+        if loop == 100:
+            ball_speed = 12
+            gold_size = 2
+            print("GOLDMASTER, YOU'VE GOT 100 NUGGETS!!")
+
+        # block bounce
+        for block in blocks:
+            block_rect = pygame.Rect(block["pos"][0], block["pos"][1], block["width"], block["height"])
+            if block_rect.colliderect(pygame.Rect(ball_pos[0] - (ball_radius + 10), ball_pos[1] - (ball_radius * 3),
+                                                  2 * (ball_radius + 10), 2 * (ball_radius + 10))):
+                overlap_x = min(abs(ball_pos[0] - (block["pos"][0] + block["width"])),
+                                abs((ball_pos[0] + ball_velocity.x) - block["pos"][0]))
+                overlap_y = min(abs(ball_pos[1] - (block["pos"][1] + block["height"])),
+                                abs((ball_pos[1] + ball_velocity.y) - block["pos"][1]))
+
+                if overlap_x < overlap_y:
+                    ball_velocity.x *= -1
+                    ball_pos[0] -= overlap_x * (1 if ball_pos[0] < block["pos"][0] else -1)
+                else:
+                    ball_velocity.y *= -1
+                    ball_pos[1] -= overlap_y * (1 if ball_pos[1] < block["pos"][1] else -1)
+
+        # Gold cfg - block, COLL-CHK, time-til
+        gold_block_rect = pygame.Rect(gold_block["pos"][0], gold_block["pos"][1], gold_block["width"],
+                                      gold_block["height"])
+        if gold_block_rect.colliderect(pygame.Rect(cursor_collision.x, cursor_collision.y, 2, 2)):
+            time_in_contact += 1 / 60  # frame/sec
+
+            if time_in_contact >= contact_threshold:
+                # gold+1, gold timer reset
+                score += (1 + (gold_rand * 2))
+                loop +=1
+                print("level" + str(loop) + " + " + str(gold_rand*100))
+                time_in_contact = 0
+                countdown_timer = contact_threshold  # timer reset (fix)
+
+                gold_block = reset_gold_block()
+
+            # COUNTDOWM MINUS CONTACT-TIME
+            countdown_timer -= 1 / 60
+
+        else:
+            time_in_contact = 0
+            countdown_timer = contact_threshold # =0
+
+        # CURS-COLL blocks
+        cursor_collision = pygame.Rect(mouse_x - 1, mouse_y - 1, 2, 2)
+        for block in blocks:
+            if cursor_collision.colliderect(
+                    pygame.Rect(block["pos"][0], block["pos"][1], block["width"], block["height"])):
+                for block in blocks:
+                    block["colour"] = alert
+                ball_colour = alert
+                paused = True
+                break
+
+        # keep non-alert block clr
+        else:
+            for block in blocks:
+                if block["colour"] == GOLD:
+                    continue
+                block["colour"] = black
+            ball_colour = (0, 255, 255)
+
+        # bounds COLL-CHK
+        if (
+                mouse_x <= wall_thickness
+                or mouse_x >= width - wall_thickness
+                or mouse_y <= ceiling_height
+                or mouse_y >= height - floor_height
+        ):
+            for block in blocks:
+                block["colour"] = alert
+            ball_colour = alert
+            paused = True
+
+        # CURS-COLL ball
+        if cursor_collision.colliderect(
+                pygame.Rect(ball_pos[0] - ball_radius, ball_pos[1] - ball_radius, 2 * ball_radius, 2 * ball_radius)):
+            for block in blocks:
+                if block["colour"] == GOLD:
+                    continue
+                block["colour"] = alert
+            ball_colour = alert
+            paused = True
+
+        # chaser in bounds CHK
+        ball_pos[0] = max(ball_radius + wall_thickness, min(width - ball_radius - wall_thickness, ball_pos[0]))
+        ball_pos[1] = max(ball_radius + ceiling_height, min(height - ball_radius - floor_height, ball_pos[1]))
+
+    # GO BG CLR
+    screen.fill(game_over_bg_colour)
+
+    # DRW bounds
+    pygame.draw.rect(screen, (0, 0, 0), (0, height - floor_height, width, floor_height))  # Floor
+    pygame.draw.rect(screen, (0, 0, 0), (0, 0, width, ceiling_height))  # Ceiling
+    pygame.draw.rect(screen, (0, 0, 0), (0, 0, wall_thickness, height))  # Left wall
+    pygame.draw.rect(screen, (0, 0, 0), (width - wall_thickness, 0, wall_thickness, height))  # Right wall
+
+    # DRW blocks
+    for block in blocks:
+        pygame.draw.rect(screen, block["colour"], (block["pos"][0], block["pos"][1], block["width"], block["height"]))
+
+    # DRW chaser
+    pygame.draw.circle(screen, ball_colour, (int(ball_pos[0]), int(ball_pos[1])), ball_radius)
+
+    # DRW gold-block
+    pygame.draw.rect(screen, gold_block["colour"], (gold_block["pos"][0], gold_block["pos"][1],
+                                                   gold_block["width"], gold_block["height"]))
+
+    if paused:
+        game_over_bg_colour = (255, 51, 255)
+        font = pygame.font.Font(None, 150)
+        text = font.render("GAME OVER!!!", True, (223, 74, 0))
+        text_2 = font.render("GAME OVER!!!", True, (255, 51, 255))
+        screen.blit(text, (width // 2 - 340, height // 2 - 50))
+        screen.blit(text_2, (width // 2 - 345, height // 2 - 52))
+
+#tickers
+
+    font = pygame.font.Font(None, 53)
+    countdown_text = font.render(f"LVL {loop // 10 +1}", True, (204, 204, 0))
+    screen.blit(countdown_text, (17, 9))
+
+    BIGscore = score * 10
+    FINALscore = round(BIGscore)
+    font = pygame.font.Font(None, 53)
+    score_text = font.render(f"{FINALscore}g", True, (204, 204, 0))
+    screen.blit(score_text, (width - 100, 8))
+
+    font = pygame.font.Font(None, 22)
+    countdown_text = font.render(f"Risk/Reward: {max(0, round(countdown_timer, 2))}", True, (255, 255, 255))
+    screen.blit(countdown_text, (150, 8))
+
+    font = pygame.font.Font(None, 24)
+    countdown_text = font.render(f"Nugget: {loop}", True, (204, 204, 0))
+    screen.blit(countdown_text, (150, 27))
+
+#display refresh/f-rate
+    pygame.display.flip()
+    pygame.time.Clock().tick(60)
